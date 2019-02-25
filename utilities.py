@@ -1,14 +1,19 @@
 from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+
 
 
 import time
+
 ##
 # Loss functions
 ##
 
-def loss_np(y_true=[],y_pred=None,loss_mat=None):
+
+
+def loss_np(y_true=None,y_pred=None,loss_mat=None):
 	"""
 	numpy function to calculate loss from the loss matrix:
 	Inputs:
@@ -17,23 +22,27 @@ def loss_np(y_true=[],y_pred=None,loss_mat=None):
 		loss_mat: matrix of loss values for selecting outputs (D,D)
 		net_loss: True -> same as loss_K, False -> used in optimal decision
 	"""
+
+
 	N,D = np.shape(y_pred)
-	if len(y_true) != 0:
-		A = np.expand_dims(np.matmul(y_pred,loss_mat),1)
-		B = np.expand_dims(y_true.T,0)
-		B = np.matmul(A,B.T)
-		L = B.reshape((N,))
-	else: # For inferring opimal H you treat y_pred as the true values
-		A = np.expand_dims(np.matmul(loss_mat,y_pred.T),0)
-		R_d = np.zeros_like(y_pred)
-		for d in range(D):
-			Z = np.zeros_like(y_pred)
-			Z[:,d] = 1
-			Z = np.expand_dims(Z,1)
-			B = np.matmul(Z,A.T)#     Matrix mul for D=12, N = 60,000 is 5000 x slower than for loop
-			R_d[:,d] = B.reshape((N,))
-			L = R_d
+	# L = np.matmul(y_pred, loss_mat)
+	# if len(y_true) != 0:
+	# 	A = np.expand_dims(np.matmul(y_pred,loss_mat),1)
+	# 	B = np.expand_dims(y_true.T,0)
+	# 	B = np.matmul(A,B.T)
+	# 	L = B.reshape((N,))
+	# else: # For inferring opimal H you treat y_pred as the true values
+	A = np.expand_dims(np.matmul(loss_mat,y_pred.T),0)
+	R_d = np.zeros_like(y_pred)
+	for d in range(D):
+		Z = np.zeros_like(y_pred)
+		Z[:,d] = 1
+		Z = np.expand_dims(Z,1)
+		B = np.matmul(Z,A.T)#     Matrix mul for D=12, N = 60,000 is 5000 x slower than for loop
+		R_d[:,d] = B.reshape((N,))
+		L = R_d
 	return L
+	# return 0
 
 
 def loss_K(loss_mat, Segmentation = False):
@@ -105,3 +114,47 @@ def optimal_h(y_pred_samples, loss_mat, return_risk = False):
 		return H_x
 	else:
 		return H_x, (1./float(T)) * R_t
+
+def sparse_matrix_to_tensor(X):
+    coo = X.tocoo()
+    indices = np.mat([coo.row, coo.col]).transpose()
+    return tf.SparseTensor(indices, coo.data, coo.shape)
+
+def utilities_to_tensors(x, sparse = False):
+	pass
+
+
+def load_mnist(n_samples=-1, square=True, conv=False):
+    num_classes = 10
+
+    img_rows, img_cols = 28, 28
+
+    # the data, shuffled and split between train and test sets
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+    if square:
+        if conv:
+            x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
+            x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)
+        else:
+            x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols)
+            x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols)
+    else:
+        x_train = x_train.reshape(x_train.shape[0], img_rows*img_cols)
+        x_test = x_test.reshape(x_test.shape[0], img_rows*img_cols)
+
+    if n_samples != -1:
+        x_train = x_train[:n_samples]
+        y_train = y_train[:n_samples]
+
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
+    print('x_train shape:', x_train.shape)
+    print(x_train.shape[0], 'train samples')
+    print(x_test.shape[0], 'test samples')
+
+    # convert class vectors to binary class matrices
+    # y_train = keras.utils.to_categorical(y_train, num_classes)
+    # y_test = keras.utils.to_categorical(y_test, num_classes)
+
+    return x_train, y_train, x_test, y_test
