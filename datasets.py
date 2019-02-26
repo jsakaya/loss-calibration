@@ -114,7 +114,7 @@ def load_eurlex(dir_name):
 
     f = open("eurlex_train.txt")
     lines = f.readlines()
-    x_train, y_train = convert_bibtex(lines[1:])
+    x_train, y_train = convert_eurlex(lines[1:])
     idx = np.where(y_train != -1)
     x_train = x_train[idx]
     y_train = y_train[idx]
@@ -122,7 +122,7 @@ def load_eurlex(dir_name):
 
     f = open("eurlex_test.txt")
     lines = f.readlines()
-    x_test, y_test = convert_bibtex(lines[1:])
+    x_test, y_test = convert_eurlex(lines[1:])
     idx = np.where(y_test != -1)
     x_test = x_test[idx]
     y_test = y_test[idx]
