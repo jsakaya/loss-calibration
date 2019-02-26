@@ -29,6 +29,172 @@ from tensorflow_probability.python.math import random_rademacher
 from tensorflow_probability.python.util import docstring as docstring_util
 from tensorflow_probability.python.layers.dense_variational import _DenseVariational
 
+class MyLayer(_DenseVariational):
+  # @docstring_util.expand_docstring(args=doc_args)
+  def __init__(
+      self,
+      num_samples,
+      units,
+      activation=None,
+      activity_regularizer=None,
+      trainable=True,
+      kernel_posterior_fn=tfp_layers_util.default_mean_field_normal_fn(),
+      kernel_posterior_tensor_fn=lambda d: d.sample(),
+      kernel_prior_fn=tfp_layers_util.default_multivariate_normal_fn,
+      kernel_divergence_fn=lambda q, p, ignore: tfd.kl_divergence(q, p),
+      bias_posterior_fn=tfp_layers_util.default_mean_field_normal_fn(
+          is_singular=True),
+      bias_posterior_tensor_fn=lambda d: d.sample(),
+      bias_prior_fn=None,
+      bias_divergence_fn=lambda q, p, ignore: tfd.kl_divergence(q, p),
+      **kwargs):
+    # pylint: disable=g-doc-args
+    """Construct layer.
+    Args:
+      ${args}
+    """
+    # pylint: enable=g-doc-args
+    super(MyLayer, self).__init__(
+        units=units,
+        activation=activation,
+        activity_regularizer=activity_regularizer,
+        trainable=trainable,
+        kernel_posterior_fn=kernel_posterior_fn,
+        kernel_posterior_tensor_fn=kernel_posterior_tensor_fn,
+        kernel_prior_fn=kernel_prior_fn,
+        kernel_divergence_fn=kernel_divergence_fn,
+        bias_posterior_fn=bias_posterior_fn,
+        bias_posterior_tensor_fn=bias_posterior_tensor_fn,
+        bias_prior_fn=bias_prior_fn,
+        bias_divergence_fn=bias_divergence_fn,
+        **kwargs)
+    self.num_samples = num_samples
+    self.input_spec = [tf.keras.layers.InputSpec(min_ndim=2), tf.keras.layers.InputSpec(min_ndim=1)]
+
+  def build(self, input_shape_list):
+    assert len(input_shape_list) == 2
+    input_shape, target_shape = input_shape_list
+    input_shape = tf.TensorShape(input_shape)
+    target_shape = tf.TensorShape(target_shape)
+    in_size = input_shape[-1].value
+    if in_size is None:
+      raise ValueError('The last dimension of the inputs to `Dense` '
+                       'should be defined. Found `None`.')
+    # self._input_spec = tf.keras.layers.InputSpec(min_ndim=2, axes={-1: in_size})
+    self.input_spec = [tf.keras.layers.InputSpec(min_ndim=2,
+                                axes={-1: in_size}),
+                       tf.keras.layers.InputSpec(min_ndim=1,
+                                axes={-1: target_shape[-1].value})]
+
+    # If self.dtype is None, build weights using the default dtype.
+    dtype = tf.as_dtype(self.dtype or tf.keras.backend.floatx())
+
+    # Must have a posterior kernel.
+    self.kernel_posterior = self.kernel_posterior_fn(
+        dtype, [self.units, in_size], 'kernel_posterior',
+        self.trainable, self.add_variable)
+
+    if self.kernel_prior_fn is None:
+      self.kernel_prior = None
+    else:
+      self.kernel_prior = self.kernel_prior_fn(
+          dtype, [self.units, in_size], 'kernel_prior',
+          self.trainable, self.add_variable)
+    self._built_kernel_divergence = False
+
+    if self.bias_posterior_fn is None:
+      self.bias_posterior = None
+    else:
+      self.bias_posterior = self.bias_posterior_fn(
+          dtype, [self.units], 'bias_posterior',
+          self.trainable, self.add_variable)
+
+    if self.bias_prior_fn is None:
+      self.bias_prior = None
+    else:
+      self.bias_prior = self.bias_prior_fn(
+          dtype, [self.units], 'bias_prior',
+          self.trainable, self.add_variable)
+    self._built_bias_divergence = False
+
+    self.built = True
+
+  def call(self, inputs_list):
+    inputs, targets = inputs_list
+    inputs = tf.convert_to_tensor(value=inputs, dtype=self.dtype)
+    targets = tf.convert_to_tensor(value=targets, dtype=self.dtype)
+
+    # for testing purposes, you'd need access to the entire output
+    self.kernel_posterior_tensor = self.kernel_posterior_tensor_fn(
+        self.kernel_posterior)
+    self.kernel_posterior_affine = None
+    self.kernel_posterior_affine_tensor = None
+    outputs = tf.matmul(inputs, self.kernel_posterior_tensor, transpose_b=True)
+
+    self.bias_posterior_tensor = self.bias_posterior_tensor_fn(
+        self.bias_posterior)
+    outputs = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
+    outputs = tf.nn.softmax(outputs, 1)
+
+    # for training purposes, get clever. Return true_logits and sampled_logits
+    # mul_factor = (self.units - 1)/(self.num_samples)
+    # true_logits, sampled_logits = _compute_sampled_logits(
+    #                 self.kernel_posterior_tensor,
+    #                 self.bias_posterior_tensor,
+    #                 targets, inputs, self.num_samples, self.units)
+    # #
+    # lowerbound = mul_factor * _sum_rows(tf.log_sigmoid(true_logits - sampled_logits))
+    # ove_loss = -tf.keras.backend.mean(lowerbound)
+
+    softmax_loss = tf.keras.backend.mean(
+                    tf.keras.backend.sparse_categorical_crossentropy(
+                        targets, outputs, from_logits = True
+                    ))
+    # # # add as implicit losses
+    # true_loss = tf.keras.backend.in_train_phase(ove_loss, softmax_loss)
+    true_loss = softmax_loss
+    self.add_loss(true_loss)
+
+    # outputs = self._apply_variational_kernel(inputs)
+    # outputs = self._apply_variational_bias(outputs)
+    # if self.activation is not None:
+    #   outputs = self.activation(outputs)  # pylint: disable=not-callable
+
+    if not self._built_kernel_divergence:
+      self._apply_divergence(self.kernel_divergence_fn,
+                             self.kernel_posterior,
+                             self.kernel_prior,
+                             self.kernel_posterior_tensor,
+                             name='divergence_kernel')
+      self._built_kernel_divergence = True
+    if not self._built_bias_divergence:
+      self._apply_divergence(self.bias_divergence_fn,
+                             self.bias_posterior,
+                             self.bias_prior,
+                             self.bias_posterior_tensor,
+                             name='divergence_bias')
+      self._built_bias_divergence = True
+
+    return tf.keras.backend.in_train_phase(sampled_logits, outputs, training = None)
+
+
+  def compute_output_shape(self, input_shape):
+    assert input_shape and len(input_shape) == 2
+    assert input_shape[0][-1]
+    input_shape = tf.TensorShape(input_shape)
+    input_shape = input_shape.with_rank_at_least(2)
+    if tf.compat.dimension_value(input_shape[-1]) is None:
+      raise ValueError(
+          'The innermost dimension of `input_shape` must be defined, '
+          'but saw: {}'.format(input_shape))
+    return input_shape[:-1].concatenate(self.units)
+
+  def _apply_variational_kernel(self, inputs):
+    self.kernel_posterior_tensor = self.kernel_posterior_tensor_fn(
+        self.kernel_posterior)
+    self.kernel_posterior_affine = None
+    self.kernel_posterior_affine_tensor = None
+    return tf.matmul(inputs, self.kernel_posterior_tensor, transpose_b=True)
 
 
 class Softmax(_DenseVariational):
