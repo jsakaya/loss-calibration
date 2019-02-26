@@ -150,6 +150,7 @@ class Softmax(_DenseVariational):
 
     self.add_loss(tf.keras.backend.mean(softmax_loss))
 
+    from __future__ import print_function
     update_step_op = tf.assign(self.t, self.t + 1)
     update_step_op = tf.keras.backend.print_tensor(update_step_op, 'asd: ')
     self.add_update(update_step_op)
