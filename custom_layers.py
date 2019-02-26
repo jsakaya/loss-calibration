@@ -73,6 +73,7 @@ class Softmax(_DenseVariational):
         **kwargs)
     # self.num_samples = num_samples
     self.M = M
+    self.t = tf.Variable(0.0)
     self.loss_mat = loss_mat
     self.input_spec = [ tf.keras.layers.InputSpec(min_ndim=2),
                         tf.keras.layers.InputSpec(min_ndim=1)]
@@ -148,6 +149,11 @@ class Softmax(_DenseVariational):
                             from_logits = False)
 
     self.add_loss(tf.keras.backend.mean(softmax_loss))
+
+    update_step_op = tf.assign(self.t, self.t + 1)
+    update_step_op = tf.keras.backend.print_tensor(update_step_op, 'asd: ')
+    self.add_update(update_step_op)
+
 
     # outputs = self._apply_variational_kernel(inputs)
     # outputs = self._apply_variational_bias(outputs)
