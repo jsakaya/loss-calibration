@@ -87,3 +87,50 @@ def load_bibtex(dir_name):
     y_test = np.array([conv[i] for i in y_test])
 
     return (x_train, y_train), (x_test, y_test)
+
+
+def convert_eurlex(train):
+  targets = np.zeros(len(train), dtype = int)
+  features = np.zeros([len(train), 5000], dtype=int)
+
+  for i, t in enumerate(train):
+    h, *t = t.split(' ')
+    h_val = h.split(',')[0]
+    targets[i] = int(h_val) if h_val != '' else -1
+    idx = [int(i.split(':')[0])-1 for i in t]
+    if min(idx) < -1:
+      print("uh oh, we have a problem")
+      return -1
+    features[i, idx] = 1
+  return features, targets
+
+def load_eurlex(dir_name):
+
+    import urllib
+    url = "https://www.dropbox.com/s/50szcq78gw8t8rh/eurlex_test.txt?dl=1"
+    urllib.request.urlretrieve(url, "eurlex_test.txt")
+    url = "https://www.dropbox.com/s/72y1zi2ycwj29g1/eurlex_train.txt?dl=1"
+    urllib.request.urlretrieve(url, "eurlex_train.txt")
+
+    f = open("eurlex_train.txt")
+    lines = f.readlines()
+    x_train, y_train = convert_bibtex(lines[1:])
+    idx = np.where(y_train != -1)
+    x_train = x_train[idx]
+    y_train = y_train[idx]
+    f.close()
+
+    f = open("eurlex_test.txt")
+    lines = f.readlines()
+    x_test, y_test = convert_bibtex(lines[1:])
+    idx = np.where(y_test != -1)
+    x_test = x_test[idx]
+    y_test = y_test[idx]
+    f.close()
+
+    ulab = np.unique(np.concatenate([y_train, y_test]))
+    conv = dict(zip(ulab, np.arange(len(ulab))))
+    y_train = np.array([conv[i] for i in y_train])
+    y_test = np.array([conv[i] for i in y_test])
+
+    return (x_train, y_train), (x_test, y_test)
