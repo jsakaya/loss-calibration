@@ -4,13 +4,15 @@ import tensorflow as tf
 from tensorflow.keras.datasets import mnist
 
 
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import itertools
 
 import time
 
 ##
 # Loss functions
 ##
-
 
 
 def loss_np(y_true=None,y_pred=None,loss_mat=None):
@@ -43,55 +45,6 @@ def loss_np(y_true=None,y_pred=None,loss_mat=None):
 		L = R_d
 	return L
 	# return 0
-
-
-def loss_K(loss_mat, Segmentation = False):
-	"""
-	TF function to calculate loss from the loss matrix:
-	Inputs:
-		y_true: true values (N,D)
-		y_pred: predicted values (N,D)
-		loss_mat: matrix of loss values for selecting outputs (D,D)
-	"""
-
-	loss_mat = tf.constant(loss_mat,dtype=tf.float32)
-
-	if Segmentation:
-		def loss(y_true,y_pred):
-			shape = tf.shape(y_true)
-			y_true = tf.reshape(y_true,(-1,shape[2])) # Turn each pixel into a data point
-			y_pred = tf.reshape(y_pred,(-1,shape[2]))
-			A = tf.expand_dims(tf.matmul(y_pred, loss_mat,name='matmul1'),1) # Select rows with pred
-			B = tf.expand_dims(y_true,-1)
-			L = tf.reshape(tf.matmul(A, B,name='matmul2'),(-1,1))
-			return tf.reshape(L,(-1,shape[1]))
-	else:
-		def loss(y_true,y_pred):
-			A = tf.matmul(y_pred, loss_mat) # Select rows with pred
-			B = tf.matmul(A, tf.transpose(y_true))
-			L = tf.diag_part(B)
-			return L
-	return loss
-
-
-def cal_loss(loss,M,H_x,Segmentation=False):
-	"""
-	Loss function for lcbnn
-	Inputs:
-		loss: TF function loss(y_true,y_pred)
-		M: Bound on loss (to convert to utility)
-		H_x: Optimal label for each x
-	Outputs:
-		dyn_loss: dynamic loss function for network
-	"""
-	def dyn_loss(y_true,y_pred):
-		# L = K.mean(K.categorical_crossentropy(y_true, y_pred) - K.mean(K.log(M-loss(y_pred,H_x)),axis=-1),axis=0)
-		L = K.mean(K.categorical_crossentropy(y_true, y_pred) - K.log(M-loss(y_pred,H_x)),axis=0)
-		if Segmentation == True:
-			L = K.mean(K.categorical_crossentropy(y_true, y_pred) - K.log(M-loss(y_pred,H_x)),axis=-1)
-
-		return L
-	return dyn_loss
 
 ##
 # Optimal H
@@ -158,3 +111,40 @@ def load_mnist(n_samples=-1, square=True, conv=False):
     # y_test = keras.utils.to_categorical(y_test, num_classes)
 
     return x_train, y_train, x_test, y_test
+
+
+
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    # plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
