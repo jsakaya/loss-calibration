@@ -91,9 +91,7 @@ class Softmax(_DenseVariational):
     self.input_spec = [tf.keras.layers.InputSpec(min_ndim=2,
                                 axes={-1: in_size}),
                        tf.keras.layers.InputSpec(min_ndim=1,
-                                axes={-1: target_shape[-1].value}),
-                        tf.keras.layers.InputSpec(min_ndim=1,
-                                 axes={-1: hypothesis_shape[-1].value})]
+                                axes={-1: target_shape[-1].value})]
 
     # If self.dtype is None, build weights using the default dtype.
     dtype = tf.as_dtype(self.dtype or tf.keras.backend.floatx())
@@ -150,7 +148,7 @@ class Softmax(_DenseVariational):
                             from_logits = False)
 
     self.add_loss(tf.keras.backend.mean(softmax_loss))
-    
+
     # outputs = self._apply_variational_kernel(inputs)
     # outputs = self._apply_variational_bias(outputs)
     # if self.activation is not None:
@@ -232,7 +230,7 @@ class LCSoftmax(_DenseVariational):
         **kwargs)
     # self.num_samples = num_samples
     self.M = M
-    self.loss_mat = loss_mat
+    self.loss_mat =  tf.convert_to_tensor(value=loss_mat, dtype=tf.float32)
     self.input_spec = [ tf.keras.layers.InputSpec(min_ndim=2),
                         tf.keras.layers.InputSpec(min_ndim=1),
                         tf.keras.layers.InputSpec(min_ndim=1)]
