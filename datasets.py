@@ -104,7 +104,7 @@ def convert_eurlex(train):
     features[i, idx] = 1
   return features, targets
 
-def load_eurlex(dir_name):
+def load_eurlex():
 
     import urllib
     url = "https://www.dropbox.com/s/50szcq78gw8t8rh/eurlex_test.txt?dl=1"
