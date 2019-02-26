@@ -7,8 +7,8 @@ def _load_bibtex(dir_path):
     Downloads the dataset to ``dir_path``.
     """
 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
     dir_path = os.path.expanduser(dir_path)
 
     import urllib.request
