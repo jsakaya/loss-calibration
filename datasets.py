@@ -59,7 +59,7 @@ def _load_bibtex(dir_path):
 
 def convert_bibtex(train):
   targets = np.zeros(len(train), dtype = int)
-  features = np.zeros([len(train), 1836], dtype=int)
+  features = np.zeros([len(train), 1836], dtype=float)
 
   for i, t in enumerate(train):
     h, *t = t.split(' ')
