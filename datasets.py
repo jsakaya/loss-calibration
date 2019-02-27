@@ -58,19 +58,17 @@ def _load_bibtex(dir_path):
     return train_lines, valid_lines, test_lines
 
 def convert_bibtex(train):
-  targets = np.zeros(len(train), dtype = int)
-  features = np.zeros([len(train), 1836], dtype=float)
+  targets = np.zeros(len(train), dtype=int)
+  features = np.zeros([len(train), 1836], dtype=int)
 
   for i, t in enumerate(train):
     h, *t = t.split(' ')
     targets[i] = int(h.split(',')[0])
     idx = [int(i.split(':')[0])-1 for i in t]
-    val = [float(i.split(':')[1]) for i in t]
-
     if min(idx) < -1:
       print("uh oh, we have a problem")
       return -1
-    features[i, idx] = val
+    features[i, idx] = 1
   return features, targets
 
 
@@ -93,7 +91,7 @@ def load_bibtex(dir_name):
 
 def convert_eurlex(train):
   targets = np.zeros(len(train), dtype = int)
-  features = np.zeros([len(train), 5000], dtype=int)
+  features = np.zeros([len(train), 5000], dtype=float)
 
   for i, t in enumerate(train):
     h, *t = t.split(' ')
