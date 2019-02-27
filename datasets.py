@@ -65,10 +65,12 @@ def convert_bibtex(train):
     h, *t = t.split(' ')
     targets[i] = int(h.split(',')[0])
     idx = [int(i.split(':')[0])-1 for i in t]
+    val = [float(i.split(':')[1]) for i in t]
+
     if min(idx) < -1:
       print("uh oh, we have a problem")
       return -1
-    features[i, idx] = 1
+    features[i, idx] = val
   return features, targets
 
 
@@ -98,7 +100,7 @@ def convert_eurlex(train):
     h_val = h.split(',')[0]
     targets[i] = int(h_val) if h_val != '' else -1
     idx = [int(i.split(':')[0])-1 for i in t]
-    val = [int(i.split(':')[1]) for i in t]
+    val = [float(i.split(':')[1]) for i in t]
     if min(idx) < -1:
       print("uh oh, we have a problem")
       return -1
