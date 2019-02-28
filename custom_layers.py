@@ -132,8 +132,11 @@ class SLCSoftmax(_DenseVariational):
     inputs, targets, hypothesis = inputs_list
     inputs = tf.convert_to_tensor(value=inputs, dtype=self.dtype)
     targets = tf.convert_to_tensor(value=targets, dtype=self.dtype)
-
     hypothesis = tf.convert_to_tensor(value=hypothesis, dtype=self.dtype)
+
+    targets = math_ops.cast(targets, dtypes.int64)
+    targets_flat = array_ops.reshape(targets, [-1])
+
     hypothesis = math_ops.cast(hypothesis, dtypes.int64)
     hypothesis = array_ops.reshape(hypothesis, [-1])
 
@@ -146,21 +149,46 @@ class SLCSoftmax(_DenseVariational):
 
     self.bias_posterior_tensor = self.bias_posterior_tensor_fn(
         self.bias_posterior)
-    outputs = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
-    outputs = tf.nn.softmax(outputs)
-
+    logits = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
+    outputs = tf.nn.softmax(logits)
     softmax_loss = tf.keras.backend.sparse_categorical_crossentropy(
                             targets,
                             outputs,
                             from_logits = False)
 
-    h_losses = tf.nn.embedding_lookup(self.loss_mat, hypothesis)
-    loss_term = _sum_rows(h_losses * outputs)
-    utility_term = tf.log(self.M - loss_term)
-    
-    # lc_loss = softmax_loss - utility_term
-    lc_loss = softmax_loss  - utility_term
+    # sampled_values = candidate_sampling_ops.all_candidate_sampler(
+    #       true_classes=tf.cast(targets, tf.int64),
+    #       num_true=1,
+    #       num_sampled=self.units,
+    #       unique=True)
 
+    sampled_values = candidate_sampling_ops.uniform_candidate_sampler(
+          true_classes=targets,
+          num_true=1,
+          num_sampled=7,
+          unique=True,
+          range_max=self.units)
+
+    sampled, true_expected_count, sampled_expected_count  =  (
+                array_ops.stop_gradient(s) for s in sampled_values)
+    sampled = math_ops.cast(sampled, dtypes.int64)
+
+
+    # idx0 = tf.range(tf.shape(hypothesis)[0])
+    # idx0 = tf.cast(idx0, tf.int64)
+    #
+    # idx = tf.stack([idx0, hypothesis], 1)
+    # idh = tf.stack([hypothesis, targets_flat], 1)
+    #
+    # h1 = tf.gather_nd(self.loss_mat, idh)
+    # l1 = tf.gather_nd(outputs, idx)
+    # loss_term = h1 * l1
+    loss_mat_sampled = tf.gather(self.loss_mat, sampled, axis = 1)
+    outputs_sampled  = tf.gather(outputs, sampled, axis = 1)
+    h_losses = tf.nn.embedding_lookup(loss_mat_sampled, hypothesis)
+    risk_term = _sum_rows(h_losses * outputs_sampled)
+    utility_term = tf.log(self.M - risk_term)
+    lc_loss = softmax_loss - utility_term
     self.add_loss(tf.keras.backend.mean(lc_loss))
 
 
@@ -484,8 +512,6 @@ class LCSoftmax(_DenseVariational):
     h_losses = tf.nn.embedding_lookup(self.loss_mat, hypothesis)
     loss_term = _sum_rows(h_losses * outputs)
     utility_term = tf.log(self.M - loss_term)
-    #
-    # lc_loss = softmax_loss - utility_term
     lc_loss = softmax_loss - utility_term
 
     self.add_loss(tf.keras.backend.mean(lc_loss))
