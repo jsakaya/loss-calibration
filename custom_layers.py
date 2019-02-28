@@ -30,7 +30,7 @@ from tensorflow_probability.python.util import docstring as docstring_util
 from tensorflow_probability.python.layers.dense_variational import _DenseVariational
 
 
-class ARBound(_DenseVariational):
+class ARLayer(_DenseVariational):
   # @docstring_util.expand_docstring(args=doc_args)
   def __init__(
       self,
@@ -55,7 +55,7 @@ class ARBound(_DenseVariational):
       ${args}
     """
     # pylint: enable=g-doc-args
-    super(ARBound, self).__init__(
+    super(ARLayer, self).__init__(
         units=units,
         activation=activation,
         activity_regularizer=activity_regularizer,
@@ -146,9 +146,9 @@ class ARBound(_DenseVariational):
                     targets, inputs, self.num_samples, self.units)
 
 
-    eta = 1. + k_const * _sum_rows(tf.exp(sampled_logits - true_logits))
-    eta = array_ops.stop_gradient(eta)
-    lowerbound = 1 - tf.log(eta) - (1./eta) * (1. + k_const * _sum_rows(tf.exp(sampled_logits - true_logits)))
+    approx = 1. + k_const * _sum_rows(tf.exp(sampled_logits - true_logits))
+    eta = array_ops.stop_gradient(approx)
+    lowerbound = 1 - tf.log(eta) - (1./eta) * approx
 
     #
     # lowerbound = mul_factor * _sum_rows(tf.log_sigmoid(true_logits - sampled_logits))
