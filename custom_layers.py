@@ -526,12 +526,12 @@ class Softmax(_DenseVariational):
 
     self.bias_posterior_tensor = self.bias_posterior_tensor_fn(
         self.bias_posterior)
-    outputs = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
-    outputs = tf.nn.softmax(outputs)
+    logits = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
+    outputs = tf.nn.softmax(logits)
     softmax_loss = tf.keras.backend.sparse_categorical_crossentropy(
                             targets,
-                            outputs,
-                            from_logits = False)
+                            logits,
+                            from_logits = True)
 
     self.add_loss(tf.keras.backend.mean(softmax_loss))
 
