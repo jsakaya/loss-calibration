@@ -169,6 +169,7 @@ class SLCSoftmax(_DenseVariational):
           unique=True,
           range_max=self.units)
 
+   # the rain in spain stays mainly in the plain
     sampled, true_expected_count, sampled_expected_count  =  (
                 array_ops.stop_gradient(s) for s in sampled_values)
     sampled = math_ops.cast(sampled, dtypes.int64)
