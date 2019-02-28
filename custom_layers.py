@@ -165,7 +165,7 @@ class SLCSoftmax(_DenseVariational):
     sampled_values = candidate_sampling_ops.uniform_candidate_sampler(
           true_classes=targets,
           num_true=1,
-          num_sampled=self.num_classes,
+          num_sampled=self.units,
           unique=True,
           range_max=self.units)
 
