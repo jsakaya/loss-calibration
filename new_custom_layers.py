@@ -156,7 +156,7 @@ class LCSoftmax(_DenseVariational):
                     sampled_values = sampled_values,
                     remove_accidental_hits = False)
 
-    log_Z = tf.reduce_logsumexp(sampled_logits, 1)
+    log_Z = tf.reduce_logsumexp(sampled_logits, 1, keepdims = True)
     softmax_loss = - true_logits + log_Z
 
     softmax_probs = tf.exp(sampled_logits  -  log_Z)
@@ -181,7 +181,7 @@ class LCSoftmax(_DenseVariational):
                              self.bias_posterior_tensor,
                              name='divergence_bias')
       self._built_bias_divergence = True
-    return outputs
+    return sampled_logits
 
   def compute_output_shape(self, input_shape):
     assert input_shape and len(input_shape) == 3
