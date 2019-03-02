@@ -138,10 +138,10 @@ class TFSoftmax(_DenseVariational):
     logits = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
 
     sampled_values = candidate_sampling_ops.all_candidate_sampler(
-    true_classes = tf.cast(targets, tf.int64),
-    num_true = 1,
-    num_sampled = self.units,
-    unique = True)
+                            true_classes = tf.cast(targets, tf.int64),
+                            num_true = 1,
+                            num_sampled = self.units,
+                            unique = True)
 
     true_logits, sampled_logits = _compute_sampled_logits(
                     self.kernel_posterior_tensor,
@@ -153,10 +153,6 @@ class TFSoftmax(_DenseVariational):
     softmax_loss = - true_logits + tf.reduce_logsumexp(sampled_logits, 1)
 
     self.add_loss(tf.keras.backend.mean(softmax_loss))
-    # outputs = self._apply_variational_kernel(inputs)
-    # outputs = self._apply_variational_bias(outputs)
-    # if self.activation is not None:
-    #   outputs = self.activation(outputs)  # pylint: disable=not-callable
 
     if not self._built_kernel_divergence:
       self._apply_divergence(self.kernel_divergence_fn,
@@ -2438,7 +2434,6 @@ def _compute_sampled_logits(weights,
     true_w = array_ops.slice(all_w, [0, 0],
                              array_ops.stack(
                                  [array_ops.shape(labels_flat)[0], -1]))
-
     sampled_w = array_ops.slice(
         all_w, array_ops.stack([array_ops.shape(labels_flat)[0], 0]), [-1, -1])
     # inputs has shape [batch_size, dim]
