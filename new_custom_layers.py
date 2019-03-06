@@ -331,8 +331,9 @@ class DUCARLayer(_DenseVariational):
             self.bias_posterior)
         outputs = tf.matmul(inputs, self.kernel_posterior_tensor, transpose_b=True)
         outputs = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
+        outputs = tf.exp(outputs)
         outputs = tf.matmul(outputs, self.util_mat, b_is_sparse = True)
-        hypothesis = tf.argmax(tf.exp(outputs), axis = 1)
+        hypothesis = tf.argmax(outputs, axis = 1)
         hypothesis = array_ops.stop_gradient(hypothesis)
 
     with ops.name_scope('E-step'):
