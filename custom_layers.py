@@ -2051,7 +2051,9 @@ class NCELayer(_DenseVariational):
     self.kernel_posterior_affine = None
     self.kernel_posterior_affine_tensor = None
     self.bias_posterior_tensor = self.bias_posterior_tensor_fn(
-        self.bias_posterior)
+    self.bias_posterior)
+    outputs = tf.matmul(inputs, self.kernel_posterior_tensor, transpose_b=True)
+    outputs = tf.nn.bias_add(outputs, self.bias_posterior_tensor)
 
     sampled_values = candidate_sampling_ops.uniform_candidate_sampler(
                             true_classes = tf.cast(targets, tf.int64),
@@ -2092,7 +2094,7 @@ class NCELayer(_DenseVariational):
                              self.bias_posterior_tensor,
                              name='divergence_bias')
       self._built_bias_divergence = True
-    return tf.keras.backend.in_train_phase(sampled_logits, sampled_logits)
+    return tf.keras.backend.in_train_phase(outputs, outputs)
 
   def compute_output_shape(self, input_shape):
     assert input_shape and len(input_shape) == 2
